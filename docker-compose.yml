@@ -1,0 +1,77 @@
+# SIEM-Integrated File Integrity Monitor — Docker Compose
+# Spins up: FIM monitor + Elasticsearch + Kibana
+#
+# Usage:
+#   docker compose up -d            # Start all services
+#   docker compose logs -f fim      # Follow FIM logs
+#   docker compose down             # Stop everything
+#
+# Kibana: http://localhost:5601
+# Elasticsearch: http://localhost:9200
+
+services:
+  # ── Elasticsearch ────────────────────────────────────────────────────────────
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: fim-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    networks:
+      - fim-network
+
+  # ── Kibana ───────────────────────────────────────────────────────────────────
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    container_name: fim-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - fim-network
+
+  # ── FIM Monitor ──────────────────────────────────────────────────────────────
+  fim:
+    build: .
+    container_name: fim-monitor
+    environment:
+      - ES_HOST=http://elasticsearch:9200
+      - ES_INDEX=fim-events
+      - WATCH_PATHS=/monitored
+      - DB_PATH=/opt/fim/fim_baseline.db
+      - LOG_FILE=/opt/fim/fim.log
+    volumes:
+      # Mount a host directory to monitor (change left side to your target)
+      - ./monitored:/monitored:ro
+      # Persist the baseline database
+      - fim-data:/opt/fim
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - fim-network
+
+volumes:
+  es-data:
+    driver: local
+  fim-data:
+    driver: local
+
+networks:
+  fim-network:
+    driver: bridge

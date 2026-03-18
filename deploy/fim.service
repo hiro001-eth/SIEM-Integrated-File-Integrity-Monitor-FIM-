@@ -1,0 +1,45 @@
+[Unit]
+Description=SIEM-Integrated File Integrity Monitor
+After=network.target elasticsearch.service
+Wants=elasticsearch.service
+
+[Service]
+# ── Execution ─────────────────────────────────────────────────────────────────
+Type=simple
+ExecStart=/usr/bin/python3 /opt/fim/monitor.py --watch
+WorkingDirectory=/opt/fim
+
+# ── Security hardening ────────────────────────────────────────────────────────
+# Run as a dedicated service account, not root.
+User=fim
+Group=fim
+
+# Read-only filesystem except where the FIM needs to write.
+ProtectSystem=strict
+ReadWritePaths=/opt/fim /var/log/fim
+
+# Restrict system call access.
+NoNewPrivileges=yes
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+PrivateTmp=yes
+
+# ── Environment ───────────────────────────────────────────────────────────────
+# Load all FIM settings from an environment file.
+EnvironmentFile=-/etc/fim/fim.env
+
+# ── Reliability ───────────────────────────────────────────────────────────────
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=fim
+
+# ── Resource limits ───────────────────────────────────────────────────────────
+LimitNOFILE=65536
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
