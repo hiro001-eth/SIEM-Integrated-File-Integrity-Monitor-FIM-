@@ -51,8 +51,8 @@ Detects unauthorized file changes, ships alerts to Elasticsearch / SIEM, and inc
 ### 1. Install
 
 ```bash
-git clone https://github.com/<YOUR_USERNAME>/<YOUR_REPO>.git
-cd <YOUR_REPO>
+git clone https://github.com/hiro001-eth/SIEM-Integrated-File-Integrity-Monitor-FIM-.git
+cd  SIEM-Integrated-File-Integrity-Monitor-FIM-
 pip install -r requirements.txt
 ```
 
